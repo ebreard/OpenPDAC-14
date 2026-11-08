@@ -179,6 +179,22 @@ void Foam::solvers::OpenPDAC::thermophysicalPredictor()
 
     const word& continuousPhaseName_ = fluid.continuousPhaseName();
 
+    // Lowest temperature [K] the continuous-phase enthalpy is clipped to.
+    // PIMPLE dictionary entry continuousTmin; without it the value is 273 K,
+    // as before. A cold atmosphere (for example a plume that rises into air
+    // at 194 K) needs a lower value, otherwise the clip warms the gas.
+    const scalar continuousTmin =
+        pimple.dict().lookupOrDefault<scalar>("continuousTmin", 273.0);
+
+    static bool continuousTminReported = false;
+    if (!continuousTminReported)
+    {
+        continuousTminReported = true;
+        Info<< "OpenPDAC: continuous-phase enthalpy floor at T = "
+            << continuousTmin
+            << " K (PIMPLE entry continuousTmin, default 273 K)" << endl;
+    }
+
     for (int Ecorr = 0; Ecorr < dynamicMaxCorrectors; Ecorr++)
     {
         const phaseModel& continuousPhase =
@@ -198,8 +214,9 @@ void Foam::solvers::OpenPDAC::thermophysicalPredictor()
             {
                 // For the continuous phase, clip negative enthalpy to a minimum
                 // physical value to prevent crashes from non-physical T.
+                // The minimum temperature is the PIMPLE entry continuousTmin.
                 volScalarField Tmin(continuousPhase.thermo().T());
-                Tmin = dimensionedScalar(dimTemperature, 273.0);
+                Tmin = dimensionedScalar(dimTemperature, continuousTmin);
                 volScalarField heMin(phase.thermo().he(p_, Tmin));
 
                 heNew =
