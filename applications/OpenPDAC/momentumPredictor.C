@@ -69,7 +69,35 @@ void Foam::solvers::OpenPDAC::faceMomentumPredictor()
                   new fvVectorMatrix(phase.UfEqn()
                                      == fvModels().source(alpha, rho, U)));
 
-        UEqns[phase.index()].relax();
+        fvVectorMatrix& UEqn = UEqns[phase.index()];
+
+        if (faceMomentumRelaxDdt)
+        {
+            // The face-momentum matrix has no ddt term, so its diagonal is
+            // only the viscous one and fvMatrix::relax (even with a factor of
+            // one) would raise it to the sum of the convective off-diagonals
+            // and put (D - D0)*U into the source. At the fixed point the face
+            // update then carries a numerical viscosity of about |u| dx/4
+            // (the difference between the interpolated cell velocity and the
+            // face value times that diagonal). Judge the dominance with the
+            // ddt diagonal added, as in the cell-momentum equation, where it
+            // is satisfied at Courant numbers below about one, and take the
+            // ddt diagonal out again afterwards.
+            const scalarField ddtDiag(
+                byDt(max(alpha.oldTime(), phase.residualAlpha())
+                     * rho.oldTime())()
+                    .primitiveField()
+                * mesh.V());
+
+            UEqn.diag() += ddtDiag;
+            UEqn.relax();
+            UEqn.diag() -= ddtDiag;
+        }
+        else
+        {
+            UEqn.relax();
+        }
+
         fvConstraints().constrain(UEqns[phase.index()]);
         U.correctBoundaryConditions();
         fvConstraints().constrain(U);

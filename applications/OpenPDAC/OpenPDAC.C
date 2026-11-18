@@ -60,6 +60,9 @@ bool Foam::solvers::OpenPDAC::read()
 
     faceMomentum = pimple.dict().lookupOrDefault<Switch>("faceMomentum", false);
 
+    faceMomentumRelaxDdt =
+        pimple.dict().lookupOrDefault<Switch>("faceMomentumRelaxDdt", true);
+
     dragCorrection =
         pimple.dict().lookupOrDefault<Switch>("dragCorrection", false);
 
@@ -252,6 +255,9 @@ Foam::solvers::OpenPDAC::OpenPDAC(fvMesh& mesh)
 
   faceMomentum(pimple.dict().lookupOrDefault<Switch>("faceMomentum", false)),
 
+  faceMomentumRelaxDdt(
+      pimple.dict().lookupOrDefault<Switch>("faceMomentumRelaxDdt", true)),
+
   dragCorrection(
       pimple.dict().lookupOrDefault<Switch>("dragCorrection", false)),
 
@@ -336,6 +342,15 @@ Foam::solvers::OpenPDAC::OpenPDAC(fvMesh& mesh)
 {
     // Read the controls
     read();
+
+    if (faceMomentum)
+    {
+        Info << "Face momentum: faceMomentumRelaxDdt "
+             << (faceMomentumRelaxDdt ? "yes (relax judges the diagonal "
+                                        "dominance with the ddt diagonal)"
+                                      : "no (relax on the matrix without ddt)")
+             << endl;
+    }
 
     if (tempOscillationControl_)
     {

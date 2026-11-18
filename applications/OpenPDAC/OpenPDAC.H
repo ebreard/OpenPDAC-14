@@ -86,6 +86,15 @@ protected:
     //  Defaults to false, i.e. uses the cell momentum equation
     Switch faceMomentum;
 
+    //- Face momentum: judge the diagonal dominance enforced by
+    //  fvMatrix::relax with the ddt diagonal included (as in the cell
+    //  momentum equation). The face-momentum matrix has no ddt term; without
+    //  this relax raises its diagonal to the sum of the convective
+    //  off-diagonals, which acts as a numerical viscosity of about
+    //  |u| dx/4 on the face-flux update.
+    //  Defaults to true; false restores the former behaviour
+    Switch faceMomentumRelaxDdt;
+
     //- Cell/face drag correction for cell momentum corrector
     //  Defaults to false
     Switch dragCorrection;
